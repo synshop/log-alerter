@@ -22,13 +22,65 @@ Script should be set up to run at boot via systemd or the like.  Be sure to:
 
 ## Assumptions
 
-This repo assumes you're running an [ACCX access control system](https://www.wallofsheep.com/collections/accx-products)
+This is used for our SYN Shop's [ACCX access control system](https://www.wallofsheep.com/collections/accx-products)
 which talks to a Raspberry Pi over serial.  We assume you're using `minicom` for this and that you're writing to 
-the `/home/access/scripts/access_log.txt` file.  
+the `/home/access/scripts/access_log.txt` file. However, you could likely adapt this script for other scenarios when you 
+need to monitor and alert on an ASCII log file.
 
+## 'minicom' Setup
 
 You should have something like this to start all this at boot ([Thanks askubuntu](https://askubuntu.com/a/261905)):
 
 ```shell
 /bin/su access -c "/usr/bin/screen -dmS minicom bash -c '/usr/bin/minicom -C /home/access/scripts/access_log.txt'"
+```
+
+
+## Log format
+
+the log-alerter is hard coded to `split()` the matched line on spaces and then check for specific indexes.  Here
+you can see an example of a hard coded 5th index from RFID reader (eg `A1B2C3D4`) as matched against the
+`users.txt` CSV file in the `badge` column. 
+
+This is what a good login looks like in `access_log.txt`:
+
+```text
+14:58:39  9/9/22 FRI User A1B2C3D4 presented tag at reader 1
+14:58:39  9/9/22 FRI 14:58:39  9/9/22 FRI User 92 authenticated.
+14:58:39  9/9/22 FRI User A1B2C3D4 granted access at reader 1
+14:58:39  9/9/22 FRI Alarm level changed to 0
+14:58:39  9/9/22 FRI Alarm armed level changed to 0
+Door 1 unlocked
+Door 1 locked
+```
+
+This is what a bad login looks like in `access_log.txt`:
+
+```text
+6:31:51  7/15/19 MON User A1B2C3D4 presented tag at reader 1
+6:31:51  7/15/19 MON User not found
+6:31:52  7/15/19 MON User  denied access at reader 1
+```
+
+## Users file
+
+The users are stored in `users.txt` and is a CSV file with the following fields:
+
+* ID
+* level
+* badge
+* name
+* handle
+* color
+* email
+* Last_Verified
+* Last_Badged
+* decimal
+
+### Sample `users.txt`
+
+```csv
+"ID","level","badge","name","handle","color","email","Last_Verified","Last_Badged","decimal"
+"1","254","BA4949","bob","zbobz","#ff00ff,#00ffff","bob@bob.net","2020-01-04","2022-07-06","12339561"
+"2","254","51FA4D","tang zhen","tangy","#000000,#000000","zhen@tang.org","2020-01-04","1969-01-01","5569356"
 ```
