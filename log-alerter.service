@@ -1,0 +1,14 @@
+[Unit]
+Description=SYN Shop access control log alerter
+After=network.target
+
+[Service]
+Type=simple
+User=access
+WorkingDirectory=/home/access
+ExecStart=/usr/bin/python3 -u /home/access/log-alerter/main.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
