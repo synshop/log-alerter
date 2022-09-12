@@ -1,0 +1,10 @@
+venv
+.idea
+disabled_users.txt
+users.txt
+users.bak.txt
+conf.py
+__pycache__
+access_log.txt
+test*.txt
+bad*.txt
