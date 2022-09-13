@@ -63,26 +63,33 @@ def update_user(data, users_file):
 
 
 def alert(data):
-    # Create the message to send
-    msg = EmailMessage()
-    msg["to"] = conf.email_to
-    msg["from"] = conf.email_from
-    msg["Subject"] = "Notice: Access " + data['result'] + " to " + data['handle']
-    msg.set_content("Handle: " + data['handle'] + "\n" +
-                    "Decimal: " + data['decimal'] + "\n" +
-                    "Badge: " + data['badge'] + "\n" +
-                    "ID: " + data['ID'] + "\n" +
-                    "\n\n-The Electric Badger")
+    subject = "Alert: Access " + data['result'] + " to " + data['handle']
+    print(subject)
 
-    # Create Smtp client, login to gmail and send the email
-    # Be sure gmail account has "allow insecure apps" in settings
-    try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-            smtp.login(conf.email_account, conf.email_password)
-            smtp.send_message(msg)
-            print("Email sent!")
-    except Exception as e:
-        print("Email NOT sent! Error: ", e)
+    if conf.email_send:
+        # Create the message to send
+        msg = EmailMessage()
+        msg["to"] = conf.email_to
+        msg["from"] = conf.email_from
+        msg["Subject"] = subject
+        msg.set_content("Handle: " + data['handle'] + "\n" +
+                        "Decimal: " + data['decimal'] + "\n" +
+                        "Badge: " + data['badge'] + "\n" +
+                        "ID: " + data['ID'] + "\n" +
+                        "\n\n-The Electric Badger")
+
+        # Create Smtp client, login to gmail and send the email
+        # Be sure gmail account has "allow insecure apps" in settings
+        try:
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+                smtp.login(conf.email_account, conf.email_password)
+                smtp.send_message(msg)
+                print("Email sent to ",conf.email_to)
+        except Exception as e:
+            print("Email NOT sent to ", conf.email_to, " Error: ", e)
+    else:
+        print("Skipping sending email - email_send set to False")
+
 
     # POST to the URLs from conf
     for url in conf.urls:
