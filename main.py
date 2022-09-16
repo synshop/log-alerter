@@ -88,16 +88,18 @@ def alert(data):
         except Exception as e:
             print("Email NOT sent to ", conf.email_to, " Error: ", e)
     else:
-        print("Skipping sending email - email_send set to False")
-
+        print("Skipping sending email - email_send set to False in conf.py")
 
     # POST to the URLs from conf
-    for url in conf.urls:
-        try:
-            http_result = requests.post(conf.urls[url], data=data, verify=False)
-            print("Success posted to ", conf.urls[url], "response was", http_result)
-        except Exception as e:
-            print("Error doing POST to ", url, " Error was:", e)
+    if len(conf.urls) > 0:
+        for url in conf.urls:
+            try:
+                http_result = requests.post(conf.urls[url], data=data, verify=False)
+                print("Success posted to ", conf.urls[url], "response was", http_result)
+            except Exception as e:
+                print("Error doing POST to ", url, " Error was:", e)
+    else:
+        print("Skipping POSTing to URLs - no URLs defined in conf.py")
 
 
 def get_decimal(badge):
