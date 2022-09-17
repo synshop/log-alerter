@@ -3,14 +3,15 @@ Python utility to watch and alert on the log from our access control system.
 
 ## Setup
 
-Script should be set up to run at boot via systemd or the like.  Be sure to:
-
+0. Make sure Python 3 is installed as well as `pip3`. Check both with `python -V&&pip -V`
 1. Add a user `access` with a home directory of `/home/access`
 2. Git clone this project as `access` user: `git clone https://github.com/synshop/log-alerter.git`
 3. Optionally set up a Virtual Env (good for dev): `python3 -m venv venv;. venv/bin/activate`
 4. Change directories: `cd ~/log-alerter`
 5. `cp conf.example.py conf.py` and edit `conf.py` to be correct
-6. Install prereqs  `pip3 install -r requirements.txt`
+6. Make sure directories and files in both `path` and  `users`  in `conf.py` exists.
+6. Make sure  `users` file has the headers and some data columns in it per the [sample below](#sample-userstxt).
+6. Install prereqs with:  `pip3 install -r requirements.txt`
 7. Copy the systemd file into place, reload systemd, start and enable it:
 
     ```    
@@ -19,6 +20,12 @@ Script should be set up to run at boot via systemd or the like.  Be sure to:
     sudo systemctl enable log-alerter
     sudo systemctl start log-alerter
     ```
+
+To test, in one terminal run `tail -f /var/log/syslog` and in another terminal run this long oneliner to mimic a log event in the correct format:
+
+```shell
+bash -c " echo foooo$'\n'barrr$'\n'basssh$'\n'14:58:39  9/9/22 FRI User A1B2C3D4 granted access at reader 1">> /home/access/scripts/access_log.txt
+```
 
 ## Assumptions
 
@@ -34,7 +41,6 @@ You should have something like this to start all this at boot ([Thanks askubuntu
 ```shell
 /bin/su access -c "/usr/bin/screen -dmS minicom bash -c '/usr/bin/minicom -C /home/access/scripts/access_log.txt'"
 ```
-
 
 ## Log format
 
@@ -82,5 +88,5 @@ The users are stored in `users.txt` and is a CSV file with the following fields:
 ```csv
 "ID","level","badge","name","handle","color","email","Last_Verified","Last_Badged","decimal"
 "1","254","BA4949","bob","zbobz","#ff00ff,#00ffff","bob@bob.net","2020-01-04","2022-07-06","12339561"
-"2","254","51FA4D","tang zhen","tangy","#000000,#000000","zhen@tang.org","2020-01-04","1969-01-01","5569356"
+"2","254","A1B2C3D4","tang zhen","tangy","#000000,#000000","zhen@tang.org","2020-01-04","1969-01-01","5569356"
 ```
