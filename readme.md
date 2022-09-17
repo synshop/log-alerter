@@ -90,3 +90,62 @@ The users are stored in `users.txt` and is a CSV file with the following fields:
 "1","254","BA4949","bob","zbobz","#ff00ff,#00ffff","bob@bob.net","2020-01-04","2022-07-06","12339561"
 "2","254","A1B2C3D4","tang zhen","tangy","#000000,#000000","zhen@tang.org","2020-01-04","1969-01-01","5569356"
 ```
+
+## About Decimal vs Hexidecimal for badges 
+
+The badge reader doesn't give us the full RFID, it rather reads the last 31 bits and a parity bit
+
+```
+proxmark3> lf search
+NOTE: some demods output possible binary
+  if it finds something that looks like a tag
+False Positives ARE possible
+
+
+Checking for known tags:
+
+EM410x pattern found:
+
+EM TAG ID      : 38001BA4F4
+
+Possible de-scramble patterns
+Unique TAG ID  : 1C00D8252F
+HoneyWell IdentKey {
+DEZ 8          : 01811700
+DEZ 10         : 0001811700
+DEZ 5.5        : 00027.42228
+DEZ 3.5A       : 056.42228
+DEZ 3.5B       : 000.42228
+DEZ 3.5C       : 027.42228
+DEZ 14/IK2     : 00240519980276
+DEZ 15/IK3     : 000120273249583
+DEZ 20/ZK      : 01120000130802050215
+}
+Other          : 42228_027_01811700
+Pattern Paxton : 942662388 [0x382FE2F4]
+Pattern 1      : 5126429 [0x4E391D]
+Pattern Sebury : 42228 27 1811700  [0xA4F4 0x1B 0x1BA4F4]
+
+Valid EM410x ID Found!
+
+
+38001BA4F4 = 00111000 00000000 00011011 10100100 11110100
+```
+
+Based on that we can calcuate the tag number read by the reader:
+
+```
+ discarded  tag number
+[001110000][0000000000110111010010011110100][parity]
+            0000000000110111010010011110100  1
+```
+
+If even number of bits in tag number parity is `1`, otherwise parity is `0`
+
+```
+00000000 00110111 01001001 11101001 = 003749e9
+```
+
+All leading zeros are discarded
+
+So our tag number is `3749e9`
