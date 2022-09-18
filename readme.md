@@ -27,6 +27,10 @@ To test, in one terminal run `tail -f /var/log/syslog` and in another terminal r
 bash -c " echo foooo$'\n'barrr$'\n'basssh$'\n'14:58:39  9/9/22 FRI User A1B2C3D4 granted access at reader 1">> /home/access/scripts/access_log.txt
 ```
 
+### Updates
+
+Over time, if you need to run `git pull origin` to get changes, or you make changes to your `config.py`, you'll need to restart the system.  This is just a quick `sudo systemctl restart log-alerter` away! 
+
 ## Assumptions
 
 This is used for our SYN Shop's [ACCX access control system](https://www.wallofsheep.com/collections/accx-products)
