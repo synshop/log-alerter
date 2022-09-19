@@ -8,3 +8,4 @@ __pycache__
 access_log.txt
 test*.txt
 bad*.txt
+user_access_log.txt

@@ -14,18 +14,27 @@ from io import StringIO
 def prep():
     conf_size = 12
     is_good = True
-    if len(conf) != conf_size:
+    conf_items = dir(conf)
+    conf_count = 0
+    for item in conf_items:
+        if not item.startswith("__"):
+            conf_count += 1
+
+    if conf_count != conf_size:
         is_good = False
-        print("Config file `conf.py' should have", conf_size, "elements, but instead has", len(conf),
-              ".Check your `conf.py' file and try again")
+        print("Config file `conf.py' should have", conf_size, "elements, but instead has", conf_count,
+              ".\nCheck your `conf.py' file as compared to 'conf.example.py' and try again.")
+
     if not os.path.isfile(conf.path):
         is_good = False
-        print("This file doesn't exist in 'conf.path':", conf.path)
+        print("The value for 'conf.path' doesn't exist on disk:", conf.path)
+
     if not os.path.isfile(conf.log_to_csv_path):
         is_good = False
-        print("This file doesn't exist in 'conf.log_to_csv_path':", conf.log_to_csv_path)
+        print("The value for 'conf.log_to_csv_path' doesn't exist on disk:", conf.log_to_csv_path)
 
     return is_good
+
 
 def get_user_data(data, users_file):
     # if data[5] is granted, then try and look them up
@@ -161,7 +170,6 @@ def get_log_data(log_path, lines, authorized, unauthorized, user_event_log):
     if len(found_lines[0]) > 0:
         badge = 'na'
         for line in found_lines[0]:
-
             # we're not sure if this is a unauth badge or not, so always capture on this line for
             # later, just in case
             if 'presented tag at reader' in line:
@@ -180,12 +188,15 @@ def get_log_data(log_path, lines, authorized, unauthorized, user_event_log):
                 to_return = line.split()
                 to_return.append(badge)
 
-        # check for dupes per last line in
-        last_login = get_this_many_lines_from_file(user_event_log, 1)
-        last_login_file = StringIO(last_login)
-        reader = csv.reader(last_login_file, delimiter=',')
-        for row in reader:
-            print('\t'.join(row))
+        # check for dupes per last line in logfile, return none found if it's a dupe
+        last_login_lines = get_this_many_lines_from_file(user_event_log, 1)
+        if len(last_login_lines) > 0:
+            last_login_file = StringIO(last_login_lines[0][0])
+            csv_lines = csv.reader(last_login_file, delimiter=',')
+            for login in csv_lines:
+                if to_return[0] == login[0] and to_return[1] == login[1] and badge == login[3]:
+                    print('dupe!!')
+                    return []
 
         return to_return
 
@@ -193,6 +204,10 @@ def get_log_data(log_path, lines, authorized, unauthorized, user_event_log):
 def get_this_many_lines_from_file(file, lines):
     found_lines = []
     data = []
+
+    if os.stat(file).st_size == 0:
+        return found_lines
+
     buffer_size = 8192
     iteration = 0
     file_size = os.stat(file).st_size
@@ -224,7 +239,10 @@ if __name__ == '__main__':
     user_event_log = conf.log_to_csv_path
 
     if not prep():
+        print("\nThere was a fatal error with your config\n")
         exit(1)
+    else:
+        print("Config is good, starting to watch", conf.path,"for changes...")
 
     # endlessly loop, checking for an updated modification time of path
     old_modification = os.path.getmtime(path)
@@ -237,6 +255,7 @@ if __name__ == '__main__':
                 if user_data['ID'] != '0':
                     update_user(user_data, users)
                 alert(user_data)
+                add_event_to_log(user_data, user_event_log)  # todo - this function has error
             old_modification = current_modification
 
         # ensure while True gives the CPU a moment to breath
