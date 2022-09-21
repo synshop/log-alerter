@@ -46,6 +46,8 @@ def get_user_data(data, users_file):
             for user in user_csv:
                 if user['badge'] == check_for:
                     user['result'] = 'granted'
+                    user['time'] = data[0]
+                    user['date'] = data[1]
                     return user
 
             # if we got here, no user found, but authorized
@@ -89,30 +91,32 @@ def update_user(data, users_file):
     shutil.move(temp_file.name, users_file)
 
 
-def add_event_to_log(data, user_event_log):
+def add_event_to_log(data, log_file):
     # note: intentionally different fields from either update_user() or get_user_data()
-    csv_fields = ['date', 'time', 'ID', 'badge', 'name', 'handle', 'email', 'decimal']
+    csv_fields = ['time', 'date', 'handle', 'badge', 'decimal', 'ID', 'name', 'email']
 
     event = {
         'time': data['time'],
         'date': data['date'],
         'ID': data['ID'],
         'badge': data['badge'],
-        'name': data['name'],
         'handle': data['handle'],
-        'email': data['email'],
         'decimal': data['decimal']
     }
+    if 'name' in data:
+        event['name'] = data['name']
+    if 'email' in data:
+        event['email'] = data['email']
 
-    with open(user_event_log, 'a', newline='') as file:
-        writer = csv.DictWriter(file, fieldnames=csv_fields)
+    with open(log_file, 'a', newline='') as file:
+        writer = csv.DictWriter(file, fieldnames=csv_fields, quoting=csv.QUOTE_NONNUMERIC)
         writer.writerow(event)
         file.close()
 
 
 def alert(data):
     subject = "Alert: Access " + data['result'] + " to " + data['handle']
-    print(subject)
+    print("Alert: ", subject)
 
     if conf.email_send:
         # Create the message to send
@@ -194,8 +198,10 @@ def get_log_data(log_path, lines, authorized, unauthorized, user_event_log):
             last_login_file = StringIO(last_login_lines[0][0])
             csv_lines = csv.reader(last_login_file, delimiter=',')
             for login in csv_lines:
+                print('get_log_data to_return', to_return)
+                print('get_log_data login', login)
                 if to_return[0] == login[0] and to_return[1] == login[1] and badge == login[3]:
-                    print('dupe!!')
+                    print('dupe log line, returning empty array')
                     return []
 
         return to_return
@@ -249,13 +255,14 @@ if __name__ == '__main__':
     while True:
         current_modification = os.path.getmtime(path)
         if current_modification != old_modification:
+            # todo - get_log_data function isn't detecting dupes from the user_event_log ?!!?!1
             alert_line = get_log_data(path, lines_back, find_good, find_bad, user_event_log)
             if len(alert_line) > 0:
                 user_data = get_user_data(alert_line, users)
                 if user_data['ID'] != '0':
                     update_user(user_data, users)
                 alert(user_data)
-                add_event_to_log(user_data, user_event_log)  # todo - this function has error
+                add_event_to_log(user_data, user_event_log)
             old_modification = current_modification
 
         # ensure while True gives the CPU a moment to breath
