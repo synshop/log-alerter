@@ -186,6 +186,7 @@ def get_log_data(log_path, lines, authorized, unauthorized, user_event_log):
             # we found an authorized user
             if authorized in line:
                 to_return = line.split()
+                badge = to_return[4]
 
             # we found an Unauthorized user, add on the badge from prior line
             if unauthorized in line:
@@ -197,11 +198,9 @@ def get_log_data(log_path, lines, authorized, unauthorized, user_event_log):
         if len(last_login_lines) > 0:
             last_login_file = StringIO(last_login_lines[0][0])
             csv_lines = csv.reader(last_login_file, delimiter=',')
-            for login in csv_lines:
-                print('get_log_data to_return', to_return)
-                print('get_log_data login', login)
-                if to_return[0] == login[0] and to_return[1] == login[1] and badge == login[3]:
-                    print('dupe log line, returning empty array')
+            for last_login in csv_lines:
+                if to_return[0] == last_login[0] and to_return[1] == last_login[1] and badge == last_login[3]:
+                    print('Skipping - current event matches last entry from log at', user_event_log)
                     return []
 
         return to_return
