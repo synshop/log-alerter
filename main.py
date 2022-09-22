@@ -58,8 +58,8 @@ def get_user_data(data, users_file):
     if data[4] == 'denied' and data[5] != 'granted':
         check_for = data[9]
         # if we got here, no user found, but authorized
-        return {'ID': '0', 'handle': 'rando_unauthorized_badge', 'result': 'denied', 'badge': check_for,
-                'decimal': get_decimal(check_for), 'time': data[0], 'date': data[1]}
+        return {'ID': '0', 'handle': 'DENIED rando_badge',  'name': 'na', 'result': 'denied','color': '#000000,#000000',
+                'badge': check_for, 'decimal': get_decimal(check_for), 'time': data[0], 'date': data[1]}
 
 
 def update_user(data, users_file):
