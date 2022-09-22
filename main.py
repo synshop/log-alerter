@@ -8,6 +8,32 @@ import smtplib
 from email.message import EmailMessage
 import requests
 import conf
+from io import StringIO
+
+
+def prep():
+    conf_size = 12
+    is_good = True
+    conf_items = dir(conf)
+    conf_count = 0
+    for item in conf_items:
+        if not item.startswith("__"):
+            conf_count += 1
+
+    if conf_count != conf_size:
+        is_good = False
+        print("Config file `conf.py' should have", conf_size, "elements, but instead has", conf_count,
+              ".\nCheck your `conf.py' file as compared to 'conf.example.py' and try again.")
+
+    if not os.path.isfile(conf.path):
+        is_good = False
+        print("The value for 'conf.path' doesn't exist on disk:", conf.path)
+
+    if not os.path.isfile(conf.log_to_csv_path):
+        is_good = False
+        print("The value for 'conf.log_to_csv_path' doesn't exist on disk:", conf.log_to_csv_path)
+
+    return is_good
 
 
 def get_user_data(data, users_file):
@@ -20,23 +46,26 @@ def get_user_data(data, users_file):
             for user in user_csv:
                 if user['badge'] == check_for:
                     user['result'] = 'granted'
+                    user['time'] = data[0]
+                    user['date'] = data[1]
                     return user
 
             # if we got here, no user found, but authorized
             return {'ID': '0', 'handle': 'authorized_but_not_in_users.txt', 'result': 'granted', 'badge': check_for,
-                    'decimal': get_decimal(check_for)}
+                    'decimal': get_decimal(check_for), 'time': data[0], 'date': data[1]}
 
     # if data[4] is denied, then just return object about badge and unauth
     if data[4] == 'denied' and data[5] != 'granted':
         check_for = data[9]
         # if we got here, no user found, but authorized
         return {'ID': '0', 'handle': 'rando_unauthorized_badge', 'result': 'denied', 'badge': check_for,
-                'decimal': get_decimal(check_for)}
+                'decimal': get_decimal(check_for), 'time': data[0], 'date': data[1]}
 
 
 def update_user(data, users_file):
     temp_file = NamedTemporaryFile(mode='w', delete=False)
     iteration = 1
+    # note: this csv_fields does NOT include the result field output from get_user_data() - this is intentional
     csv_fields = ['ID', 'level', 'badge', 'name', 'handle', 'color', 'email', 'Last_Verified', 'Last_Badged', 'decimal']
 
     with open(users_file, 'r') as file, temp_file:
@@ -62,9 +91,32 @@ def update_user(data, users_file):
     shutil.move(temp_file.name, users_file)
 
 
+def add_event_to_log(data, log_file):
+    # note: intentionally different fields from either update_user() or get_user_data()
+    csv_fields = ['time', 'date', 'handle', 'badge', 'decimal', 'ID', 'name', 'email']
+
+    event = {
+        'time': data['time'],
+        'date': data['date'],
+        'ID': data['ID'],
+        'badge': data['badge'],
+        'handle': data['handle'],
+        'decimal': data['decimal']
+    }
+    if 'name' in data:
+        event['name'] = data['name']
+    if 'email' in data:
+        event['email'] = data['email']
+
+    with open(log_file, 'a', newline='') as file:
+        writer = csv.DictWriter(file, fieldnames=csv_fields, quoting=csv.QUOTE_NONNUMERIC)
+        writer.writerow(event)
+        file.close()
+
+
 def alert(data):
     subject = "Alert: Access " + data['result'] + " to " + data['handle']
-    print(subject)
+    print("Alert: ", subject)
 
     if conf.email_send:
         # Create the message to send
@@ -111,27 +163,10 @@ def get_decimal(badge):
 
 
 # thanks https://gist.github.com/amitsaha/5990310#file-tail_2-py !
-def get_log_data(log_path, lines, authorized, unauthorized):
-    buffer_size = 8192
-    file_size = os.stat(log_path).st_size
+def get_log_data(log_path, lines, authorized, unauthorized, user_event_log):
 
-    iteration = 0
-    found_lines = []
     to_return = []
-    data = []
-
-    with open(log_path) as f:
-
-        # first we gather the last N lines into found_lines array
-        if buffer_size > file_size:
-            buffer_size = file_size - 1
-        while True:
-            iteration += 1
-            f.seek(file_size - buffer_size * iteration)
-            data.extend(f.readlines())
-            if len(data) >= lines or f.tell() == 0:
-                found_lines.append(data[-lines:])
-                break
+    found_lines = get_this_many_lines_from_file(log_path, lines)
 
     # if we got lines in found_lines, loop through each line looking for authorized or unauthorized
     # note: it's important we don't break in any of the if statements because we want to get the
@@ -139,7 +174,6 @@ def get_log_data(log_path, lines, authorized, unauthorized):
     if len(found_lines[0]) > 0:
         badge = 'na'
         for line in found_lines[0]:
-
             # we're not sure if this is a unauth badge or not, so always capture on this line for
             # later, just in case
             if 'presented tag at reader' in line:
@@ -152,13 +186,50 @@ def get_log_data(log_path, lines, authorized, unauthorized):
             # we found an authorized user
             if authorized in line:
                 to_return = line.split()
+                badge = to_return[4]
 
-            # we found an UNauthorized user, add on the badge from prior line
+            # we found an Unauthorized user, add on the badge from prior line
             if unauthorized in line:
                 to_return = line.split()
                 to_return.append(badge)
 
+        # check for dupes per last line in logfile, return none found if it's a dupe
+        last_login_lines = get_this_many_lines_from_file(user_event_log, 1)
+        if len(last_login_lines) > 0:
+            last_login_file = StringIO(last_login_lines[0][0])
+            csv_lines = csv.reader(last_login_file, delimiter=',')
+            for last_login in csv_lines:
+                if to_return[0] == last_login[0] and to_return[1] == last_login[1] and badge == last_login[3]:
+                    print('Skipping - current event matches last entry from log at', user_event_log)
+                    return []
+
         return to_return
+
+
+def get_this_many_lines_from_file(file, lines):
+    found_lines = []
+    data = []
+
+    if os.stat(file).st_size == 0:
+        return found_lines
+
+    buffer_size = 8192
+    iteration = 0
+    file_size = os.stat(file).st_size
+    with open(file) as f:
+
+        # first we gather the last N lines into found_lines array
+        if buffer_size > file_size:
+            buffer_size = file_size - 1
+        while True:
+            iteration += 1
+            f.seek(file_size - buffer_size * iteration)
+            data.extend(f.readlines())
+            if len(data) >= lines or f.tell() == 0:
+                found_lines.append(data[-lines:])
+                break
+
+    return found_lines
 
 
 if __name__ == '__main__':
@@ -170,18 +241,27 @@ if __name__ == '__main__':
     find_bad = conf.find_bad
     users = conf.users
     lines_back = conf.lines_back
+    user_event_log = conf.log_to_csv_path
+
+    if not prep():
+        print("\nThere was a fatal error with your config\n")
+        exit(1)
+    else:
+        print("Config is good, starting to watch", conf.path,"for changes...")
 
     # endlessly loop, checking for an updated modification time of path
     old_modification = os.path.getmtime(path)
     while True:
         current_modification = os.path.getmtime(path)
         if current_modification != old_modification:
-            alert_line = get_log_data(path, lines_back, find_good, find_bad)
+            # todo - get_log_data function isn't detecting dupes from the user_event_log ?!!?!1
+            alert_line = get_log_data(path, lines_back, find_good, find_bad, user_event_log)
             if len(alert_line) > 0:
                 user_data = get_user_data(alert_line, users)
                 if user_data['ID'] != '0':
                     update_user(user_data, users)
                 alert(user_data)
+                add_event_to_log(user_data, user_event_log)
             old_modification = current_modification
 
         # ensure while True gives the CPU a moment to breath
