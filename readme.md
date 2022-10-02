@@ -1,6 +1,6 @@
 # log-alerter
 
-Python utility to watch and alert on the log from SYN Shop's access control system. It attempts to lookup users in a CSV file. Alerts can be sent via `POST`s or via email ([via `smtplib`](https://docs.python.org/3/library/smtplib.html)) or not at all. (If no alerts configured, you get a log of of a log file ;)
+Python utility to watch and alert on the log from SYN Shop's access control system. It attempts to lookup users in a CSV file. Alerts can be sent via `POST`s or via email ([via `smtplib`](https://docs.python.org/3/library/smtplib.html)) or not at all. (If no alerts configured, you get a log of a log file ;)
 
 ## Setup
 
