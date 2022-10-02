@@ -1,5 +1,6 @@
 # log-alerter
-Python utility to watch and alert on the log from our access control system.
+
+Python utility to watch and alert on the log from SYN Shop's access control system. It attempts to lookup users in a CSV file. Alerts can be sent via `POST`s or via email ([via `smtplib`](https://docs.python.org/3/library/smtplib.html)) or not at all. (If no alerts configured, you get a log of of a log file ;)
 
 ## Setup
 
@@ -37,6 +38,74 @@ This is used for our SYN Shop's [ACCX access control system](https://www.wallofs
 which talks to a Raspberry Pi over serial.  We assume you're using `minicom` for this and that you're writing to 
 the `/home/access/scripts/access_log.txt` file. However, you could likely adapt this script for other scenarios when you 
 need to monitor and alert on an ASCII log file.
+
+## Alerts
+
+Alerts will be sent for **every event captured** ([except duplicates](https://github.com/synshop/log-alerter/blob/main/main.py#L196)). 
+
+### Types
+
+There are three types of events: 
+
+* Authorized swipes and user found in `users.txt` based off their hexidecimal badge number
+* Authorized swipes, but **not** found in `users.txt` based off their hexidecimal badge number. Username will be `authorized_but_not_in_users.txt`
+* Unauthorized swipes. Username will be `rando_unauthorized_badge`
+
+### `POST`s
+
+In [the config](https://github.com/synshop/log-alerter/blob/main/conf.example.py) there is a `urls` array that allows you to specify a URL to send a `POST` to.  If no URLs are defined, no `POSTS` will be setn.
+
+The payload looks like this:
+
+* `ID` - ID in the access control system.  Number between 1 and 199
+* `level` - Always `254` or `255` or `0`. Corresponds to access level control system, but only users with `254` will be granted. 
+* `badge` - Hex value of badge
+* `name` - Human name
+* `handle` - Human handle found in `users.txt` or `authorized_but_not_in_users.txt` or `rando_unauthorized_badge`
+* `color` - one or two HTML Hex colors. If two, separated by coma (`,`)
+* `email` - email of swipe
+* `Last_Verified` - deprected
+* `Last_Badged` - last time this user badged in
+* `decimal` - Decimal value of badge
+* `result` - result of swipe. Either `granted` or `denied`
+
+### Emails
+
+#### Authorized swipes and user found in `users.txt`
+
+> Subject: Alert: Access granted to TestMcTestFace
+> 
+> Handle: TestMcTestFace
+> 
+> Decimal: 1811700
+> 
+> Badge: A1B2C3D4
+> 
+> ID: 4
+
+#### Authorized swipes, but **not** found in `users.txt`
+
+> Subject: "Alert: Access granted to authorized_but_not_in_users.txt"
+> 
+> Handle: authorized_but_not_in_users.txt
+> 
+> Decimal: 7963232
+> 
+> Badge: 798260
+> 
+> ID: 0
+
+#### Unauthorized swipes
+
+> Subject: "Alert: Access denied to rando_unauthorized_badge"
+> 
+> Handle: rando_unauthorized_badge
+> 
+> Decimal: 7963232
+> 
+> Badge: 798260
+> 
+> ID: 0
 
 ## 'minicom' Setup
 
