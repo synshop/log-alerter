@@ -68,6 +68,7 @@ The payload looks like this:
 * `Last_Badged` - last time this user badged in
 * `decimal` - Decimal value of badge
 * `result` - result of swipe. Either `granted` or `denied`
+* `reader` - ID of card reader. Currently back door is  `1`
 
 ### Emails
 
@@ -82,6 +83,8 @@ The payload looks like this:
 > Badge: A1B2C3D4
 > 
 > ID: 4
+> 
+> Reader: 1
 
 #### Authorized swipes, but **not** found in `users.txt`
 
@@ -94,6 +97,8 @@ The payload looks like this:
 > Badge: 798260
 > 
 > ID: 0
+> 
+> Reader: 1
 
 #### Unauthorized swipes
 
@@ -106,6 +111,8 @@ The payload looks like this:
 > Badge: 798260
 > 
 > ID: 0
+> 
+> Reader: 1
 
 ## 'minicom' Setup
 

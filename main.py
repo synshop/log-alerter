@@ -37,29 +37,38 @@ def prep():
 
 
 def get_user_data(data, users_file):
+    # seed data shared amung all results of get_user_data()
+    to_return = {'time': data[0], 'date': data[1], 'ID': '0', 'color': '#000000,#000000', 'name': 'na'}
+
     # if data[5] is granted, then try and look them up
     if data[5] == 'granted' and data[4] != 'denied':
+        # for granted users, seed more shared info, data[4] has badge and data[9] has reader
+        to_return['badge'] = data[4]
+        to_return['decimal'] = get_decimal(data[4])
+        to_return['reader'] = data[9]
+        to_return['result'] = 'granted'
+
         with open(users_file, mode='r') as file:
             # reading the CSV file
             user_csv = csv.DictReader(file)
-            check_for = data[4]
             for user in user_csv:
-                if user['badge'] == check_for:
-                    user['result'] = 'granted'
-                    user['time'] = data[0]
-                    user['date'] = data[1]
-                    return user
+                if user['badge'] == to_return['badge']:
+                    to_return.update(user)
+                    return to_return
 
             # if we got here, no user found, but authorized
-            return {'ID': '0', 'handle': 'authorized_but_not_in_users.txt', 'result': 'granted', 'badge': check_for,
-                    'decimal': get_decimal(check_for), 'time': data[0], 'date': data[1]}
+            to_return['handle'] = 'authorized but not in users.txt'
+            return to_return
 
-    # if data[4] is denied, then just return object about badge and unauth
+    # if data[4] is denied, then return object about badge and unauth
     if data[4] == 'denied' and data[5] != 'granted':
-        check_for = data[9]
-        # if we got here, no user found, but authorized
-        return {'ID': '0', 'handle': 'DENIED rando_badge',  'name': 'na', 'result': 'denied','color': '#000000,#000000',
-                'badge': check_for, 'decimal': get_decimal(check_for), 'time': data[0], 'date': data[1]}
+        # for unauthorized users, data[9] has badge and data[8] has reader
+        to_return['reader'] = data[8]
+        to_return['badge'] = data[9]
+        to_return['decimal'] = get_decimal(data[9])
+        to_return['handle'] = 'DENIED rando badge'
+        to_return['result'] = 'denied'
+        return to_return
 
 
 def update_user(data, users_file):
@@ -93,7 +102,7 @@ def update_user(data, users_file):
 
 def add_event_to_log(data, log_file):
     # note: intentionally different fields from either update_user() or get_user_data()
-    csv_fields = ['time', 'date', 'handle', 'badge', 'decimal', 'ID', 'name', 'email']
+    csv_fields = ['time', 'date', 'handle', 'badge', 'decimal', 'ID', 'name', 'email', 'reader']
 
     event = {
         'time': data['time'],
@@ -101,7 +110,8 @@ def add_event_to_log(data, log_file):
         'ID': data['ID'],
         'badge': data['badge'],
         'handle': data['handle'],
-        'decimal': data['decimal']
+        'decimal': data['decimal'],
+        'reader': data['reader']
     }
     if 'name' in data:
         event['name'] = data['name']
@@ -116,7 +126,7 @@ def add_event_to_log(data, log_file):
 
 def alert(data):
     subject = "Alert: Access " + data['result'] + " to " + data['handle']
-    print("Alert: ", subject)
+    print(subject,'badge:', data['badge'], 'reader:', data['reader'])
 
     if conf.email_send:
         # Create the message to send
@@ -124,11 +134,14 @@ def alert(data):
         msg["to"] = conf.email_to
         msg["from"] = conf.email_from
         msg["Subject"] = subject
-        msg.set_content("Handle: " + data['handle'] + "\n" +
-                        "Decimal: " + data['decimal'] + "\n" +
-                        "Badge: " + data['badge'] + "\n" +
-                        "ID: " + data['ID'] + "\n" +
-                        "\n\n-The Electric Badger")
+        msg.set_content(
+            "Handle: " + data['handle'] + "\n" +
+            "Decimal: " + data['decimal'] + "\n" +
+            "Badge: " + data['badge'] + "\n" +
+            "ID: " + data['ID'] + "\n" +
+            "Reader: " + data['reader'] + "\n" +
+            "\n\n-The Electric Badger"
+            )
 
         # Create Smtp client, login to gmail and send the email
         # Be sure gmail account has "allow insecure apps" in settings
@@ -139,8 +152,6 @@ def alert(data):
                 print("Email sent to ",conf.email_to)
         except Exception as e:
             print("Email NOT sent to ", conf.email_to, " Error: ", e)
-    else:
-        print("Skipping sending email - email_send set to False in conf.py")
 
     # POST to the URLs from conf
     if len(conf.urls) > 0:
@@ -150,8 +161,6 @@ def alert(data):
                 print("Success posted to ", conf.urls[url], "response was", http_result)
             except Exception as e:
                 print("Error doing POST to ", url, " Error was:", e)
-    else:
-        print("Skipping POSTing to URLs - no URLs defined in conf.py")
 
 
 def get_decimal(badge):
@@ -199,8 +208,10 @@ def get_log_data(log_path, lines, authorized, unauthorized, user_event_log):
             last_login_file = StringIO(last_login_lines[0][0])
             csv_lines = csv.reader(last_login_file, delimiter=',')
             for last_login in csv_lines:
-                if to_return[0] == last_login[0] and to_return[1] == last_login[1] and badge == last_login[3]:
-                    print('Skipping - current event matches last entry from log at', user_event_log)
+                if len(to_return) > 1 and len(last_login) > 4 and to_return[0] == last_login[0] \
+                        and to_return[1] == last_login[1] and badge == last_login[3]:
+                    print('Skipping - dupe event in', user_event_log, 'of badge:', badge, ' handle:', last_login[2],
+                          'timedate:', last_login[0], last_login[1])
                     return []
 
         return to_return
@@ -254,7 +265,6 @@ if __name__ == '__main__':
     while True:
         current_modification = os.path.getmtime(path)
         if current_modification != old_modification:
-            # todo - get_log_data function isn't detecting dupes from the user_event_log ?!!?!1
             alert_line = get_log_data(path, lines_back, find_good, find_bad, user_event_log)
             if len(alert_line) > 0:
                 user_data = get_user_data(alert_line, users)
