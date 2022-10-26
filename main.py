@@ -42,7 +42,7 @@ def get_user_data(data, users_file):
 
     # we should be sure we got all the needed fields, which are 4, 5, 8 and 9
     if len(data) < 9:
-        print("ERROR: get_user_data() didn't get enough data from get_log_data() call.  Here's what it was sent:",
+        print("ERROR: get_user_data() didn't receive enough data from get_log_data() call.  Data received was:",
               data)
         return to_return
 
