@@ -22,16 +22,16 @@ def prep():
 
     if conf_count != conf_size:
         is_good = False
-        print("Config file `conf.py' should have", conf_size, "elements, but instead has", conf_count,
+        print("ERROR: Config file `conf.py' should have", conf_size, "elements, but instead has", conf_count,
               ".\nCheck your `conf.py' file as compared to 'conf.example.py' and try again.")
 
     if not os.path.isfile(conf.path):
         is_good = False
-        print("The value for 'conf.path' doesn't exist on disk:", conf.path)
+        print("ERROR: The value for 'conf.path' doesn't exist on disk:", conf.path)
 
     if not os.path.isfile(conf.log_to_csv_path):
         is_good = False
-        print("The value for 'conf.log_to_csv_path' doesn't exist on disk:", conf.log_to_csv_path)
+        print("ERROR: The value for 'conf.log_to_csv_path' doesn't exist on disk:", conf.log_to_csv_path)
 
     return is_good
 
@@ -39,6 +39,12 @@ def prep():
 def get_user_data(data, users_file):
     # seed data shared amung all results of get_user_data()
     to_return = {'time': data[0], 'date': data[1], 'ID': '0', 'color': '#000000,#000000', 'name': 'na'}
+
+    # we should be sure we got all the needed fields, which are 4, 5, 8 and 9
+    if len(data) < 9:
+        print("ERROR: get_user_data() didn't get enough data from get_log_data() call.  Here's what it was sent:",
+              data)
+        return to_return
 
     # if data[5] is granted, then try and look them up
     if data[5] == 'granted' and data[4] != 'denied':
@@ -160,7 +166,7 @@ def alert(data):
                 http_result = requests.post(conf.urls[url], data=data, verify=False)
                 print("Success posted to ", conf.urls[url], "response was", http_result)
             except Exception as e:
-                print("Error doing POST to ", url, " Error was:", e)
+                print("ERROR: POST to ", url, " Error was:", e)
 
 
 def get_decimal(badge):
@@ -255,7 +261,7 @@ if __name__ == '__main__':
     user_event_log = conf.log_to_csv_path
 
     if not prep():
-        print("\nThere was a fatal error with your config\n")
+        print("\nERROR: There was a fatal error with your config\n")
         exit(1)
     else:
         print("Config is good, starting to watch", conf.path,"for changes...")
