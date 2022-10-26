@@ -44,6 +44,7 @@ def get_user_data(data, users_file):
     if len(data) < 9:
         print("ERROR: get_user_data() didn't receive enough data from get_log_data() call.  Data received was:",
               data)
+        to_return['result'] = 'error'
         return to_return
 
     # if data[5] is granted, then try and look them up
@@ -276,8 +277,9 @@ if __name__ == '__main__':
                 user_data = get_user_data(alert_line, users)
                 if user_data['ID'] != '0':
                     update_user(user_data, users)
-                alert(user_data)
-                add_event_to_log(user_data, user_event_log)
+                if user_data['result'] != 'error':
+                    alert(user_data)
+                    add_event_to_log(user_data, user_event_log)
             old_modification = current_modification
 
         # ensure while True gives the CPU a moment to breath
