@@ -1,0 +1,7 @@
+14:58:39  9/9/22 FRI User DB2198 presented tag at reader 1
+14:58:39  9/9/22 FRI 14:58:39  9/9/22 FRI User 92 authenticated.
+14:58:39  9/9/22 FRI User DB2198 granted access at reader 1
+14:58:39  9/9/22 FRI Alarm level changed to 0
+14:58:39  9/9/22 FRI Alarm armed level changed to 0
+Door 1 unlocked
+Door 1 locked

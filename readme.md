@@ -2,18 +2,21 @@
 
 Python utility to watch and alert on the log from SYN Shop's access control system. It attempts to lookup users in a CSV file. Alerts can be sent via `POST`s or via email ([via `smtplib`](https://docs.python.org/3/library/smtplib.html)) or not at all. (If no alerts configured, you get a log of a log file ;)
 
-## Setup
+Big thanks to [nickjj](https://github.com/nickjj) who's awesome [simple python webserver](https://github.com/nickjj/webserver) is included with some slight modifications to enable easy debugging. 
+
+## Install
+
+### Production Install
 
 0. Make sure Python 3 is installed as well as `pip3`. Check both with `python -V&&pip -V`
 1. Add a user `access` with a home directory of `/home/access`
 2. Git clone this project as `access` user: `git clone https://github.com/synshop/log-alerter.git`
-3. Optionally set up a Virtual Env (good for dev): `python3 -m venv venv;. venv/bin/activate`
-4. Change directories: `cd ~/log-alerter`
-5. `cp conf.example.py conf.py` and edit `conf.py` to be correct
+3. Change directories: `cd ~/log-alerter`
+4. `cp conf.example.py conf.py` and edit `conf.py` to be correct
+5. `cp users-sample.txt users.txt` and edit `users.txt` to be correct
 6. Make sure directories and files in both `path` and  `users`  in `conf.py` exists.
-6. Make sure  `users` file has the headers and some data columns in it per the [sample below](#sample-userstxt).
-6. Install prereqs with:  `pip3 install -r requirements.txt`
-7. Copy the systemd file into place, reload systemd, start and enable it:
+7. Install prereqs with:  `pip3 install -r requirements.txt`
+8. Copy the systemd file into place, reload systemd, start and enable it:
 
     ```    
     sudo cp log-alerter.service /etc/systemd/system/
@@ -21,14 +24,32 @@ Python utility to watch and alert on the log from SYN Shop's access control syst
     sudo systemctl enable log-alerter
     sudo systemctl start log-alerter
     ```
+9. Restart the server that the log-alerter is on to ensure it starts up on its own correctly
 
-To test, in one terminal run `tail -f /var/log/syslog` and in another terminal run this long oneliner to mimic a log event in the correct format:
+If you want to test your setup is working you can run: `cat test-data/good.txt >>access_log.txt`
 
-```shell
-bash -c " echo foooo$'\n'barrr$'\n'basssh$'\n'14:58:39  9/9/22 FRI User A1B2C3D4 granted access at reader 1">> /home/access/scripts/access_log.txt
-```
 
-### Updates
+### Development Install
+
+0. Make sure Python 3 is installed as well as `pip3`. Check both with `python -V&&pip -V`
+1. Git clone this project: `git clone https://github.com/synshop/log-alerter.git`
+2. Change directories: `cd ./log-alerter`
+3. Set up a Virtual Env (good for dev): `python3 -m venv venv;. venv/bin/activate`
+4. `cp conf.dev-example.py.py` and edit `conf.py` which should already be correct for development.
+5. `cp users-sample.txt users.txt` to create a sample users database
+6. create the empty access log `touch access_log.txt && user_access_log.txt`
+7. Make sure directories and files in both `path` and  `users`  in `conf.py` exists.
+8. Install prereqs with:  `pip3 install -r requirements.txt`
+9. Open 3 terminals, starting in the `log-alerter` directory:
+   1. in first terminal run the app itself: `python3 ./main.py`
+   2. in second terminal run the test web server: `python3 test-web-server/main.py`
+   3. in third `cat` one of the test data files: `cat test-data/good.txt >>access_log.txt`
+
+When you run the last step, it should look like this:
+
+![](development.terminals.png)
+
+## Updates
 
 Over time, if you need to run `git pull origin` to get changes, or you make changes to your `config.py`, you'll need to restart the system.  This is just a quick `sudo systemctl restart log-alerter` away! 
 

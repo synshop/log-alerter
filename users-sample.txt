@@ -1,0 +1,3 @@
+"ID","level","badge","name","handle","color","email","Last_Verified","Last_Badged","decimal"
+"3","253","BB2198","Testing","The Test Test","#ff7070,#000000","testing_account@example.org","2020-01-04","2019-10-01","1811700"
+"4","253","AB3198","Other-test","Two Test Test","#ff7070,#000000","second-test@example.org","2020-01-04","2019-10-01","1811700"
